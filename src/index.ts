@@ -1,122 +1,187 @@
-namespace SuSee {
-  const pkgName = "SU-SEE";
+import ts from "typescript";
 
-  export interface DepsFile {
-    file: string;
-    content: string;
-  }
-  export interface NamesSet {
-    base: string;
-    file: string;
-    newName: string;
-    isEd?: boolean;
-  }
-  export type NamesSets = NamesSet[];
+const pkgName = "SU-SEE";
 
-  export type DuplicatesNameMap = Map<string, Set<{ file: string }>>;
+interface DepsFile {
+  file: string;
+  content: string;
+}
+interface NamesSet {
+  base: string;
+  file: string;
+  newName: string;
+  isEd?: boolean;
+}
+type NamesSets = NamesSet[];
 
-  export type BundleHandler = ({ file, content }: DepsFile) => DepsFile;
+type DuplicatesNameMap = Map<string, Set<{ file: string }>>;
 
-  export interface NamesMap {
-    base: string;
-    file: string;
-    short: string;
-    oldName: string;
-  }
-  export type PostProcessHook =
-    | {
-        async: true;
-        func: (code: string, file?: string) => Promise<string>;
-      }
-    | {
-        async: false;
-        func: (code: string, file?: string) => string;
-      };
-  export type OutPutHookFunc = (...args: any[]) => PostProcessHook;
+type BundleHandler = ({ file, content }: DepsFile) => DepsFile;
 
-  export type OutFiles = {
-    commonjs: string | undefined;
-    commonjsTypes: string | undefined;
-    esm: string | undefined;
-    esmTypes: string | undefined;
-    main: string | undefined;
-    module: string | undefined;
-    types: string | undefined;
-  };
-  export type Target = "commonjs" | "esm" | "both";
-
-  export type Exports = Record<
-    string,
-    {
-      import?: { default: string; types: string };
-      require?: { default: string; types: string };
+interface NamesMap {
+  base: string;
+  file: string;
+  short: string;
+  oldName: string;
+}
+type PostProcessExtension =
+  | {
+      type: "post-process";
+      async: true;
+      func: (code: string, file?: string) => Promise<string>;
     }
-  >;
+  | {
+      type: "post-process";
+      async: false;
+      func: (code: string, file?: string) => string;
+    };
+type PreProcessExtension =
+  | {
+      type: "pre-process";
+      async: true;
+      func: (code: string, file?: string) => Promise<string>;
+    }
+  | {
+      type: "pre-process";
+      async: false;
+      func: (code: string, file?: string) => string;
+    };
+type DependencyExtension =
+  | {
+      type: "dependency";
+      async: true;
+      func: (files: DepsFile[]) => Promise<DepsFile[]>;
+    }
+  | {
+      type: "dependency";
+      async: false;
+      func: (files: DepsFile[]) => DepsFile[];
+    };
 
-  /**
-   * Build configuration.
-   */
-  export interface BuildOptions {
-    /**
-     * Entry file to bundle.
-     */
-    entry: string;
-    /**
-     * Output target: `"commonjs"`, `"esm"`, or `"both"`.
-     *
-     * default - "both"
-     */
-    target?: Target;
-    /**
-     * Default export name if applicable.
-     * - Required when the entry has default export and `options.target` = `"commonjs"` or `"both"`
-     *
-     * Example :
-     *
-     * ```ts
-     * const foo = {bar:"foo"};
-     * export default foo; // defaultExportName = "foo"
-     * ```
-     *
-     * default - undefined
-     */
-    defaultExportName?: string | undefined;
-    /**
-     * Whether this build represents the main export , otherwise subpath export.
-     *
-     * default - true
-     */
-    isMainExport?: boolean;
-    /**
-     * Output directory.
-     *
-     * For a subpath export (not the main export), `outDir` must be a single-level
-     * nested folder under the main output directory.
-     *
-     * Example:
-     *
-     * ```ts
-     * const mainOutdir = "dist";
-     * const subpathOutdir = "dist/subpath"; // subpath export in package.json will be "./subpath"
-     * const fooOutdir = "dist/foo"; // subpath export in package.json will be "./foo"
-     * ```
-     *
-     * default - "dist"
-     */
-    outDir?: string;
-    /**
-     * Identifiers to replace with blanks during compilation.
-     *
-     * default - []
-     */
-    replaceWithBlank?: string[];
-    /**
-     * Array of hook functions executed during compilation.
-     *
-     * default - []
-     */
-    hooks?: PostProcessHook[];
+type ASTExtension =
+  | {
+      type: "ast";
+      async: true;
+      func: (sourceFile: ts.SourceFile) => Promise<ts.SourceFile>;
+    }
+  | {
+      type: "ast";
+      async: false;
+      func: (sourceFile: ts.SourceFile) => ts.SourceFile;
+    };
+type SuseeExtension =
+  | PostProcessExtension
+  | PreProcessExtension
+  | DependencyExtension
+  | ASTExtension;
+
+type OutFiles = {
+  commonjs: string | undefined;
+  commonjsTypes: string | undefined;
+  esm: string | undefined;
+  esmTypes: string | undefined;
+  main: string | undefined;
+  module: string | undefined;
+  types: string | undefined;
+};
+type Target = "commonjs" | "esm" | "both";
+
+type Exports = Record<
+  string,
+  {
+    import?: { default: string; types: string };
+    require?: { default: string; types: string };
   }
+>;
+
+type NodeJsOutput = {
+  target: "nodejs";
+  /**
+   *  path for package
+   *
+   * required
+   */
+  Path: "." | `./${string}`;
+  /**
+   * Output module type of package , commonjs,esm or both esm and commonjs
+   *
+   * default - esm
+   */
+  format?: "commonjs" | "esm" | "both";
+};
+
+type WebOutput = { target: "web" };
+
+/**
+ * Entry point for SuSee configuration
+ */
+type EntryPoint = {
+  /**
+   * Entry of file path of package
+   *
+   * required
+   */
+  entry: string;
+  /**
+   * Info for output
+   *
+   * required
+   */
+  output: NodeJsOutput | WebOutput;
+  /**
+   * Custom tsconfig.json path for package typescript compiler options
+   *
+   * Priority -
+   *  1. this custom tsconfig.json
+   *  2. tsconfig.json at root directory
+   *  3. default compiler options of susee
+   *
+   * default - undefined
+   */
+  tsconfigFilePath?: string | undefined;
+  /**
+   * When bundling , if there are duplicate declared names , susee will auto rename , if renameDuplicates = false exist with code 1.
+   *
+   * default - true
+   */
+  renameDuplicates?: boolean;
+};
+
+/**
+ * Configuration for Susee Bundler
+ */
+interface SuSeeConfig {
+  /**
+   * Array of entry points object
+   *
+   * required
+   */
+  entryPoints: EntryPoint[];
+  /**
+   * Array of susee extension
+   *
+   * default - []
+   */
+  extensions?: SuseeExtension[];
+  /**
+   * Allow bundler to update your package.json.
+   *
+   * default - true
+   */
+  allowUpdatePackageJson?: boolean;
 }
 
-export default SuSee;
+export type {
+  SuseeExtension,
+  Target,
+  EntryPoint,
+  SuSeeConfig,
+  DepsFile,
+  DuplicatesNameMap,
+  NamesMap,
+  NamesSet,
+  NamesSets,
+  BundleHandler,
+  Exports,
+  OutFiles,
+};
