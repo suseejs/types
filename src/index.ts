@@ -101,16 +101,22 @@ type NodeJsOutput = {
    *
    * required
    */
-  Path: "." | `./${string}`;
+  exportPath: "." | `./${string}`;
   /**
    * Output module type of package , commonjs,esm or both esm and commonjs
    *
    * default - esm
    */
   format?: "commonjs" | "esm" | "both";
+  /**
+   * Allow bundler to update your package.json.
+   *
+   * default - true
+   */
+  allowUpdatePackageJson?: boolean;
 };
 
-type WebOutput = { target: "web" };
+type WebOutput = { target: "web"; outFile: string; htmlTemplate: string };
 
 /**
  * Entry point for SuSee configuration
@@ -163,12 +169,6 @@ interface SuSeeConfig {
    * default - []
    */
   extensions?: SuseeExtension[];
-  /**
-   * Allow bundler to update your package.json.
-   *
-   * default - true
-   */
-  allowUpdatePackageJson?: boolean;
 }
 
 export type {
@@ -185,3 +185,5 @@ export type {
   Exports,
   OutFiles,
 };
+
+export { pkgName };

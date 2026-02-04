@@ -1,6 +1,5 @@
 {
   "$schema": "ts.json",
-  // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // File Layout
     "rootDir": "./src",
@@ -11,6 +10,7 @@
     "module": "nodenext",
     "target": "esnext",
     "types": [],
+    "esModuleInterop": true,
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
